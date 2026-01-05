@@ -21,10 +21,12 @@ import { generateWorkoutSuggestions, handleCoachChat } from './services/openai';
 import { WorkoutPlan, type WeeklyPlan } from './components/WorkoutPlan';
 import { ActivityHistory } from './components/ActivityHistory';
 import { AskCoach, type ChatMessage } from './components/AskCoach';
+import { fetchHevyWorkouts, calculateExerciseStats, type ExerciseStats } from './services/hevy';
 import { motion, AnimatePresence } from 'framer-motion';
+import logo from './assets/images/gotrain.png';
 
 function Dashboard() {
-  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, distanceUnit, weightUnit } = useSettings();
+  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userGoals, setUserGoals] = useState<UserGoals | undefined>(() => {
     const saved = localStorage.getItem('workoutBinderUserGoals');
@@ -66,6 +68,7 @@ function Dashboard() {
     const saved = localStorage.getItem('workoutBinderChatMessages');
     return saved ? JSON.parse(saved) : [];
   });
+  const [exerciseStats, setExerciseStats] = useState<ExerciseStats[]>([]);
 
   useEffect(() => {
     localStorage.setItem('workoutBinderChatMessages', JSON.stringify(chatMessages));
@@ -156,8 +159,21 @@ function Dashboard() {
       setActivities(recentActivities);
       localStorage.setItem('workoutBinderActivities', JSON.stringify(recentActivities));
 
+      let fetchedStats: ExerciseStats[] = [];
+      if (hevyApiKey) {
+        try {
+          const hevyWorkouts = await fetchHevyWorkouts(hevyApiKey);
+          fetchedStats = calculateExerciseStats(hevyWorkouts);
+          setExerciseStats(fetchedStats);
+        } catch (err) {
+          console.error('Failed to fetch Hevy data', err);
+          // Don't block the whole process if Hevy fails
+        }
+      }
+
       const units = { distance: distanceUnit, weight: weightUnit };
-      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units);
+      const currentDate = new Date().toISOString().split('T')[0];
+      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units, fetchedStats, currentDate);
       setSuggestions(workoutPlan);
       localStorage.setItem('workoutBinderSuggestions', workoutPlan);
 
@@ -223,7 +239,9 @@ function Dashboard() {
         userGoals!,
         activities,
         parsedPlan,
-        { distance: distanceUnit, weight: weightUnit }
+        { distance: distanceUnit, weight: weightUnit },
+        exerciseStats,
+        new Date().toISOString().split('T')[0]
       );
 
       let finalContent = coachResponse;
@@ -268,12 +286,30 @@ function Dashboard() {
     }
   };
 
+  const handleEditDay = (dayNumber: number, activityType: string) => {
+    const editPrompt = `I'd like to edit Day ${dayNumber} (${activityType}).`;
+
+    // Check if we already have this context to avoid duplicates
+    if (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].content === editPrompt) {
+      // Just scroll to chat if the last message was the same
+      document.getElementById('ask-coach-chat')?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    handleSendMessage(editPrompt);
+    // Add a small delay to allow the state to update before scrolling
+    setTimeout(() => {
+      document.getElementById('ask-coach-chat')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   return (
     <div className="min-h-screen bg-transparent flex flex-col">
       <nav className="bg-white/80 backdrop-blur-md shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-10">
-            <Link to="/" className="text-3xl font-black text-blue-600 tracking-tighter hover:scale-105 transition-transform">
+            <Link to="/" className="flex items-center gap-2 text-3xl font-black text-blue-600 tracking-tighter hover:scale-105 transition-transform">
+              <img src={logo} alt="GoTrain Logo" className="w-10 h-10 object-contain" />
               GoTrain
             </Link>
 
@@ -463,7 +499,7 @@ function Dashboard() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                             >
-                              <WorkoutPlan key={suggestions?.length} plan={parsedPlan} />
+                              <WorkoutPlan key={suggestions?.length} plan={parsedPlan} onEditDay={handleEditDay} />
                             </motion.div>
                           ) : (
                             <div className="prose max-w-none">

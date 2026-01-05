@@ -8,11 +8,12 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-    const { stravaClientId, stravaClientSecret, openAiApiKey, distanceUnit, weightUnit, updateSettings } = useSettings();
+    const { stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, updateSettings } = useSettings();
     const [formData, setFormData] = useState({
         stravaClientId,
         stravaClientSecret,
         openAiApiKey,
+        hevyApiKey,
         distanceUnit,
         weightUnit
     });
@@ -23,10 +24,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             stravaClientId,
             stravaClientSecret,
             openAiApiKey,
+            hevyApiKey,
             distanceUnit,
             weightUnit
         });
-    }, [stravaClientId, stravaClientSecret, openAiApiKey, distanceUnit, weightUnit]);
+    }, [stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit]);
 
     if (!isOpen) return null;
 
@@ -89,6 +91,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             onChange={e => setFormData(prev => ({ ...prev, openAiApiKey: e.target.value }))}
                             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             placeholder="sk-..."
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Hevy API Key (Optional)
+                        </label>
+                        <input
+                            type="password"
+                            value={formData.hevyApiKey}
+                            onChange={e => setFormData(prev => ({ ...prev, hevyApiKey: e.target.value }))}
+                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            placeholder="Enter Hevy API Key"
                         />
                     </div>
 

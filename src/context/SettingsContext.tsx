@@ -4,6 +4,7 @@ interface Settings {
     stravaClientId: string;
     stravaClientSecret: string;
     openAiApiKey: string;
+    hevyApiKey: string;
     distanceUnit: 'kilometers' | 'miles';
     weightUnit: 'kg' | 'lbs';
     isConfigured: boolean;
@@ -23,6 +24,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             stravaClientId: '',
             stravaClientSecret: '',
             openAiApiKey: '',
+            hevyApiKey: '',
             distanceUnit: 'kilometers',
             weightUnit: 'kg',
             isConfigured: false
@@ -50,6 +52,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             stravaClientId: '',
             stravaClientSecret: '',
             openAiApiKey: '',
+            hevyApiKey: '',
             distanceUnit: 'kilometers',
             weightUnit: 'kg',
             isConfigured: false
