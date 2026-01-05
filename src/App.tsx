@@ -232,7 +232,11 @@ function Dashboard() {
       const planMatch = coachResponse.match(/<REVISED_PLAN>([\s\S]*?)<\/REVISED_PLAN>/);
       if (planMatch) {
         try {
-          const newPlanJson = planMatch[1].trim();
+          let newPlanJson = planMatch[1].trim();
+          // Strip markdown code blocks if present
+          if (newPlanJson.startsWith('```')) {
+            newPlanJson = newPlanJson.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim();
+          }
           const newParsedPlan = JSON.parse(newPlanJson);
           setParsedPlan(newParsedPlan);
           setSuggestions(newPlanJson);
@@ -459,7 +463,7 @@ function Dashboard() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                             >
-                              <WorkoutPlan plan={parsedPlan} />
+                              <WorkoutPlan key={suggestions?.length} plan={parsedPlan} />
                             </motion.div>
                           ) : (
                             <div className="prose max-w-none">

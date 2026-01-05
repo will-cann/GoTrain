@@ -104,6 +104,7 @@ ${goals.considerations ? `    Considerations: ${goals.considerations}` : ''}
     2. If the user asks to EDIT or CHANGE the plan (e.g., "add yoga", "swap day 2", "make it harder"):
        - You MUST provide a COMPLETELY REVISED JSON plan.
        - Wrap the JSON in a special tag: <REVISED_PLAN>...</REVISED_PLAN>.
+       - IMPORTANT: Do NOT include markdown code blocks (backticks) inside the <REVISED_PLAN> tags. Provide raw JSON only.
        - Ensure the JSON follows the exact schema from before.
     3. Keep responses concise and professional.
     `;
