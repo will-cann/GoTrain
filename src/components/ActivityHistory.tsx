@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Map, Trophy, Timer, Activity, Heart, RefreshCw } from 'lucide-react';
+import { Calendar, Map, Trophy, Timer, Activity, Heart, RefreshCw } from 'lucide-react';
 import type { StravaActivity } from '../services/strava';
 import { format } from 'date-fns';
 

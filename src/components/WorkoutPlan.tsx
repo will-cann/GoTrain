@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, Zap, Map, Info, Dumbbell, Coffee, X, MessageSquarePlus, ChevronDown } from 'lucide-react';
+import { Trophy, Clock, Zap, Map, Dumbbell, Coffee, MessageSquarePlus, ChevronDown } from 'lucide-react';
 
 export interface WorkoutExercise {
     name: string;
