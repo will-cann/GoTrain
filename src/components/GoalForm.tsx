@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, Save, Trophy } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export interface UserGoals {
@@ -52,45 +52,37 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[32px] shadow-sm border border-gray-100 p-8"
+            className="border border-edge p-6"
         >
-            <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-                    <Target className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight">Your Fitness Goals</h2>
-                    <p className="text-sm text-gray-500 font-medium italic">What are we training for?</p>
-                </div>
+            <div className="mb-8">
+                <span className="label-caps block mb-2">Training</span>
+                <h2 className="text-lg font-bold text-chalk tracking-[-0.02em]">Your Goals</h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="space-y-3">
-                    <label className="block text-sm font-bold text-gray-700 ml-1">
-                        What is your main goal?
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                    <label className="label-caps block">
+                        Main Goal
                     </label>
-                    <div className="relative group">
-                        <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                            type="text"
-                            required
-                            placeholder="e.g. Run a sub-2 hour half marathon"
-                            value={goals.mainGoal}
-                            onChange={e => setGoals({ ...goals, mainGoal: e.target.value })}
-                            className="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent border-2 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400"
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        required
+                        placeholder="e.g. Run a sub-2 hour half marathon"
+                        value={goals.mainGoal}
+                        onChange={e => setGoals({ ...goals, mainGoal: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
+                    />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                        <label className="block text-sm font-bold text-gray-700 ml-1">
-                            Days per week
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="label-caps block">
+                            Days / Week
                         </label>
                         <select
                             value={goals.daysPerWeek}
                             onChange={e => setGoals({ ...goals, daysPerWeek: Number(e.target.value) })}
-                            className="w-full px-4 py-4 bg-gray-50 border-transparent border-2 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all font-bold text-gray-900 appearance-none cursor-pointer"
+                            className="w-full px-4 py-3 bg-surface border border-edge text-chalk text-[0.9375rem] focus:border-accent focus:outline-none transition-colors appearance-none cursor-pointer select-arrow"
                         >
                             {[1, 2, 3, 4, 5, 6, 7].map(num => (
                                 <option key={num} value={num}>{num} days</option>
@@ -98,14 +90,14 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
                         </select>
                     </div>
 
-                    <div className="space-y-3">
-                        <label className="block text-sm font-bold text-gray-700 ml-1">
-                            Fitness Level
+                    <div className="space-y-2">
+                        <label className="label-caps block">
+                            Level
                         </label>
                         <select
                             value={goals.fitnessLevel}
                             onChange={e => setGoals({ ...goals, fitnessLevel: e.target.value as any })}
-                            className="w-full px-4 py-4 bg-gray-50 border-transparent border-2 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all font-bold text-gray-900 appearance-none cursor-pointer"
+                            className="w-full px-4 py-3 bg-surface border border-edge text-chalk text-[0.9375rem] focus:border-accent focus:outline-none transition-colors appearance-none cursor-pointer select-arrow"
                         >
                             <option value="beginner">Beginner</option>
                             <option value="intermediate">Intermediate</option>
@@ -114,9 +106,9 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <label className="block text-sm font-bold text-gray-700 ml-1">
-                        Preferred Activity Types
+                <div className="space-y-3">
+                    <label className="label-caps block">
+                        Activities
                     </label>
                     <div className="flex flex-wrap gap-2">
                         {activityOptions.map((option) => (
@@ -124,9 +116,9 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
                                 key={option.id}
                                 type="button"
                                 onClick={() => toggleActivity(option.id)}
-                                className={`px-4 py-2 rounded-xl border-2 transition-all text-sm font-bold uppercase tracking-wider ${goals.preferredActivities.includes(option.id)
-                                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                                    : 'bg-gray-50 border-transparent text-gray-600 hover:bg-gray-100'
+                                className={`px-3 py-1.5 border text-[0.6875rem] font-semibold uppercase tracking-[0.1em] transition-all ${goals.preferredActivities.includes(option.id)
+                                    ? 'bg-accent border-accent text-black'
+                                    : 'bg-transparent border-edge text-muted hover:text-chalk hover:border-chalk'
                                     }`}
                             >
                                 {option.label}
@@ -135,25 +127,24 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
                     </div>
                 </div>
 
-                <div className="space-y-3">
-                    <label className="block text-sm font-bold text-gray-700 ml-1">
-                        Any injuries or considerations?
+                <div className="space-y-2">
+                    <label className="label-caps block">
+                        Injuries / Considerations
                     </label>
                     <textarea
                         placeholder="e.g. recovering from ankle pain, prefer low impact"
                         value={goals.considerations || ''}
                         onChange={e => setGoals({ ...goals, considerations: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border-transparent border-2 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 focus:outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400 min-h-[100px] resize-none"
+                        className="w-full px-4 py-3 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors min-h-[80px] resize-none"
                     />
                 </div>
 
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full bg-gray-900 text-white font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-gray-200 hover:bg-black transition-all"
+                    className="w-full bg-chalk text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-3 px-4 flex items-center justify-center gap-2 hover:bg-white transition-colors"
                 >
-                    <Save className="w-5 h-5" />
+                    <Save className="w-4 h-4" />
                     Save Goals
                 </motion.button>
             </form>

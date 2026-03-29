@@ -5,11 +5,12 @@ import {
   Settings as SettingsIcon,
   RefreshCw,
   CheckCircle2,
-  Zap,
   Send,
   History,
   LayoutDashboard,
-  AlertCircle
+  AlertCircle,
+  ArrowRight,
+  MessageSquare
 } from 'lucide-react';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { SettingsModal } from './components/SettingsModal';
@@ -28,11 +29,11 @@ import logo from './assets/images/gotrain.png';
 function Dashboard() {
   const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [userGoals, setUserGoals] = useState<UserGoals | undefined>(() => {
     const saved = localStorage.getItem('workoutBinderUserGoals');
     if (!saved) return undefined;
     const parsed = JSON.parse(saved);
-    // Migration: preferredActivity (string) -> preferredActivities (array)
     if (!parsed.preferredActivities && parsed.preferredActivity) {
       parsed.preferredActivities = [parsed.preferredActivity];
       delete parsed.preferredActivity;
@@ -75,7 +76,6 @@ function Dashboard() {
   }, [chatMessages]);
 
   useEffect(() => {
-    // Handle Strava OAuth Redirect
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 
@@ -85,7 +85,6 @@ function Dashboard() {
         try {
           const data = await exchangeToken(stravaClientId, stravaClientSecret, code);
           saveStravaTokens(data);
-          // Clear query params
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (err: any) {
           setError('Failed to connect to Strava: ' + err.message);
@@ -116,7 +115,6 @@ function Dashboard() {
       return accessToken;
     }
 
-    // Token expired, refresh it
     try {
       const data = await refreshToken(stravaClientId, stravaClientSecret, refresh);
       saveStravaTokens(data);
@@ -167,7 +165,6 @@ function Dashboard() {
           setExerciseStats(fetchedStats);
         } catch (err) {
           console.error('Failed to fetch Hevy data', err);
-          // Don't block the whole process if Hevy fails
         }
       }
 
@@ -223,7 +220,6 @@ function Dashboard() {
     setChatMessages([]);
   };
 
-
   const handleSendMessage = async (content: string) => {
     if (!openAiApiKey) return;
 
@@ -246,12 +242,10 @@ function Dashboard() {
 
       let finalContent = coachResponse;
 
-      // Look for revised plan
       const planMatch = coachResponse.match(/<REVISED_PLAN>([\s\S]*?)<\/REVISED_PLAN>/);
       if (planMatch) {
         try {
           let newPlanJson = planMatch[1].trim();
-          // Strip markdown code blocks if present
           if (newPlanJson.startsWith('```')) {
             newPlanJson = newPlanJson.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim();
           }
@@ -260,8 +254,7 @@ function Dashboard() {
           setSuggestions(newPlanJson);
           localStorage.setItem('workoutBinderSuggestions', newPlanJson);
 
-          // Clean up the response for display
-          finalContent = coachResponse.replace(/<REVISED_PLAN>[\s\S]*?<\/REVISED_PLAN>/, 'I\'ve updated your plan based on your request! ✨');
+          finalContent = coachResponse.replace(/<REVISED_PLAN>[\s\S]*?<\/REVISED_PLAN>/, 'Plan updated.');
         } catch (e) {
           console.error('Failed to parse revised plan', e);
         }
@@ -289,259 +282,278 @@ function Dashboard() {
   const handleEditDay = (dayNumber: number, activityType: string) => {
     const editPrompt = `I'd like to edit Day ${dayNumber} (${activityType}).`;
 
-    // Check if we already have this context to avoid duplicates
+    // Open coach panel if closed
+    if (!isCoachOpen) setIsCoachOpen(true);
+
     if (chatMessages.length > 0 && chatMessages[chatMessages.length - 1].content === editPrompt) {
-      // Just scroll to chat if the last message was the same
-      document.getElementById('ask-coach-chat')?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
 
     handleSendMessage(editPrompt);
-    // Add a small delay to allow the state to update before scrolling
-    setTimeout(() => {
-      document.getElementById('ask-coach-chat')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   };
 
   return (
-    <div className="min-h-screen bg-transparent flex flex-col">
-      <nav className="bg-white/80 backdrop-blur-md shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <div className="h-screen bg-black flex flex-col overflow-hidden">
+      {/* Nav */}
+      <nav className="border-b border-edge z-40 bg-black shrink-0">
+        <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-10">
-            <Link to="/" className="flex items-center gap-2 text-3xl font-black text-blue-600 tracking-tighter hover:scale-105 transition-transform">
-              <img src={logo} alt="GoTrain Logo" className="w-10 h-10 object-contain" />
-              GoTrain
+            <Link to="/" className="flex items-center gap-3 group">
+              <img src={logo} alt="GoTrain" className="w-7 h-7 object-contain" />
+              <span className="text-lg font-bold tracking-[-0.02em] text-chalk group-hover:text-accent transition-colors">
+                GOTRAIN
+              </span>
             </Link>
 
             {isConfigured && (
               <div className="hidden md:flex items-center gap-1">
                 <NavLink
                   to="/"
-                  className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'
-                    }`}
+                  end
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] transition-colors ${isActive
+                      ? 'text-chalk border-b-2 border-accent'
+                      : 'text-muted hover:text-chalk'
+                    }`
+                  }
                 >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Weekly Plan
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  Plan
                 </NavLink>
                 <NavLink
                   to="/history"
-                  className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'
-                    }`}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] transition-colors ${isActive
+                      ? 'text-chalk border-b-2 border-accent'
+                      : 'text-muted hover:text-chalk'
+                    }`
+                  }
                 >
-                  <History className="w-4 h-4" />
-                  Activity History
+                  <History className="w-3.5 h-3.5" />
+                  History
                 </NavLink>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
+            {isConfigured && (
+              <button
+                onClick={() => setIsCoachOpen(!isCoachOpen)}
+                className={`flex items-center gap-2 p-2 transition-colors ${isCoachOpen ? 'text-accent' : 'text-muted hover:text-chalk'}`}
+                aria-label={isCoachOpen ? 'Close coach panel' : 'Open coach panel'}
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="hidden sm:inline text-[0.6875rem] font-semibold uppercase tracking-[0.14em]">
+                  Coach
+                </span>
+              </button>
+            )}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-3 text-gray-400 hover:text-blue-600 transition-all rounded-2xl hover:bg-blue-50 border border-transparent hover:border-blue-100"
-              title="Settings"
+              className="p-2 text-muted hover:text-chalk transition-colors"
+              aria-label="Open settings"
             >
-              <SettingsIcon className="w-6 h-6" />
+              <SettingsIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
-          </div>
-        )}
-        <Routes>
-          <Route path="/history" element={
-            <ActivityHistory
-              activities={activities}
-              distanceUnit={distanceUnit}
-              onRefresh={handleRefreshWorkouts}
-              isRefreshing={loading}
-            />
-          } />
-          <Route path="/" element={
-            <div className="space-y-8">
-              {/* Existing Dashboard Content */}
-              {!isConfigured ? (
-                <div className="text-center py-20">
-                  <div className="bg-white p-10 rounded-3xl shadow-xl shadow-blue-50 max-w-md mx-auto border border-blue-50">
-                    <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mb-8 mx-auto rotate-3 shadow-lg shadow-blue-200">
-                      <Zap className="w-10 h-10 text-white fill-white" />
-                    </div>
-                    <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Welcome to GoTrain ⚡️</h2>
-                    <p className="text-gray-600 mb-10 leading-relaxed font-medium">
-                      Ready to level up? Configure your API keys to unlock personalized, AI-driven training plans that evolve with you.
-                    </p>
-                    <button
-                      onClick={() => setIsSettingsOpen(true)}
-                      className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:-translate-y-0.5"
-                    >
-                      <SettingsIcon className="w-5 h-5 inline mr-2" />
-                      Configure APIs
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left Column: Goals & Inputs */}
-                  <div className="lg:col-span-1 space-y-6">
-                    <GoalForm onSave={handleSaveGoals} savedGoals={userGoals} />
-
-                    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                      <h2 className="text-xl font-black text-gray-900 mb-6">Data Sources</h2>
-                      {!stravaToken ? (
-                        <button
-                          onClick={handleConnectStrava}
-                          disabled={loading}
-                          className="w-full bg-[#FC6100] hover:bg-[#e65a00] text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-orange-100 disabled:opacity-50"
-                        >
-                          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                          Connect to Strava
-                        </button>
-                      ) : (
-                        <div className="space-y-6">
-                          <div className="flex items-center justify-between p-4 bg-green-50 rounded-2xl border border-green-100">
-                            <div className="flex items-center gap-3 text-green-700">
-                              <CheckCircle2 className="w-5 h-5" />
-                              <span className="font-bold">Strava Connected</span>
-                            </div>
-                            <button
-                              onClick={handleDisconnectStrava}
-                              className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              Disconnect
-                            </button>
-                          </div>
-                          {activities.length > 0 && (
-                            <Link to="/history" className="block p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-all group">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-gray-600">Last 7 Days</span>
-                                <History className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                              </div>
-                              <div className="text-2xl font-black text-gray-900">{activities.length} Workouts</div>
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {stravaToken && userGoals && (
+      {/* Body: main content + coach sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main scrollable area */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            {error && (
+              <div className="mb-6 px-4 py-3 border border-red-500/30 bg-red-500/5 flex items-center gap-3 text-red-400">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <p className="text-sm flex-1">{error}</p>
+                <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 transition-colors p-1" aria-label="Dismiss error">
+                  <span className="text-lg leading-none">&times;</span>
+                </button>
+              </div>
+            )}
+            <Routes>
+              <Route path="/history" element={
+                <ActivityHistory
+                  activities={activities}
+                  distanceUnit={distanceUnit}
+                  onRefresh={handleRefreshWorkouts}
+                  isRefreshing={loading}
+                />
+              } />
+              <Route path="/" element={
+                <>
+                  {!isConfigured ? (
+                    <div className="flex flex-col items-center justify-center py-32 text-center">
+                      <span className="label-caps text-muted mb-6">Welcome to</span>
+                      <h1 className="text-[clamp(3.5rem,8vw+1rem,7rem)] font-bold tracking-[-0.04em] text-chalk mb-6">
+                        GOTRAIN
+                      </h1>
+                      <p className="text-dim max-w-[42ch] text-lg mb-12 leading-[1.7]">
+                        AI-driven training plans built from your real data. Connect Strava, set your goals, get moving.
+                      </p>
                       <button
-                        onClick={handleGeneratePlan}
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 px-6 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50 hover:-translate-y-0.5"
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="group flex items-center gap-3 bg-accent hover:bg-accent-hover text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] px-8 py-4 transition-all"
                       >
-                        <Send className={`w-6 h-6 ${loading ? 'animate-pulse' : ''}`} />
-                        {loading ? 'Analyzing...' : 'Generate AI Weekly Plan'}
+                        Configure APIs
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                      {/* Left Column: Goals & Inputs */}
+                      <div className="lg:col-span-1 space-y-6">
+                        <GoalForm onSave={handleSaveGoals} savedGoals={userGoals} />
 
-                  {/* Right Column: Weekly Plan */}
-                  <div className="lg:col-span-2">
-                    {/* The existing Weekly Plan View logic */}
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 min-h-[600px] relative overflow-hidden flex flex-col">
-                      <div className="flex items-center justify-between mb-10">
-                        <div>
-                          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Weekly Plan</h2>
-                          <p className="text-sm text-gray-500 mt-2 font-medium italic">Custom tailored training session just for you</p>
-                        </div>
-                        {suggestions && !loading && (
-                          <div className="flex gap-3">
+                        <div className="border border-edge p-6">
+                          <h2 className="label-caps mb-6">Data Sources</h2>
+                          {!stravaToken ? (
                             <button
-                              onClick={handleGeneratePlan}
+                              onClick={handleConnectStrava}
                               disabled={loading}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                              className="w-full bg-[#FC4C02] hover:bg-[#e64400] text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-3 px-6 flex items-center justify-center gap-3 transition-colors disabled:opacity-50"
                             >
                               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                              {loading ? 'Generating...' : 'Regenerate'}
+                              Connect Strava
                             </button>
-                            <button
-                              onClick={handleCopyPlan}
-                              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${copySuccess
-                                ? 'bg-green-100 text-green-700 scale-105'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                            >
-                              {copySuccess ? <CheckCircle2 className="w-4 h-4" /> : <span>📋</span>}
-                              {copySuccess ? 'Copied!' : 'Copy'}
-                            </button>
-                          </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between py-3 border-b border-edge">
+                                <div className="flex items-center gap-3 text-[#FC4C02]">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span className="label-caps text-[#FC4C02]">Strava Connected</span>
+                                </div>
+                                <button
+                                  onClick={handleDisconnectStrava}
+                                  className="label-caps hover:text-red-400 transition-colors"
+                                >
+                                  Disconnect
+                                </button>
+                              </div>
+                              {activities.length > 0 && (
+                                <Link to="/history" className="block py-3 border-b border-edge hover:border-chalk transition-colors group">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="label-caps">Last 7 Days</span>
+                                    <ArrowRight className="w-3 h-3 text-muted group-hover:text-chalk group-hover:translate-x-0.5 transition-all" />
+                                  </div>
+                                  <div className="text-2xl font-bold text-chalk tracking-[-0.02em] tabular">{activities.length} <span className="text-dim text-base font-normal">workouts</span></div>
+                                </Link>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {stravaToken && userGoals && (
+                          <button
+                            onClick={handleGeneratePlan}
+                            disabled={loading}
+                            className="w-full bg-accent hover:bg-accent-hover text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-4 px-6 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <Send className={`w-4 h-4 ${loading ? 'animate-pulse' : ''}`} />
+                            {loading ? 'Analyzing...' : 'Generate Plan'}
+                          </button>
                         )}
                       </div>
 
-                      <div className="flex-1">
-                        <AnimatePresence mode="wait">
-                          {!suggestions ? (
-                            <motion.div
-                              key="empty"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
-                              className="h-[500px] flex flex-col items-center justify-center text-center px-10"
-                            >
-                              <div className="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center mb-8 relative rotate-6">
-                                <div className="absolute inset-0 bg-blue-100/50 rounded-3xl animate-ping" />
-                                <RefreshCw className="w-12 h-12 text-blue-400 relative z-10" />
+                      {/* Right Column: Weekly Plan */}
+                      <div className="lg:col-span-2">
+                        <div className="border border-edge p-5 sm:p-8 min-h-[500px] relative overflow-hidden flex flex-col">
+                          <div className="flex items-center justify-between mb-8">
+                            <div>
+                              <span className="label-caps block mb-2">Your Program</span>
+                              <h2 className="text-2xl font-bold text-chalk tracking-[-0.02em]">Weekly Plan</h2>
+                            </div>
+                            {suggestions && !loading && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleGeneratePlan}
+                                  disabled={loading}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 border border-edge text-dim hover:text-chalk hover:border-chalk text-[0.6875rem] font-semibold uppercase tracking-[0.1em] transition-colors disabled:opacity-50"
+                                >
+                                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                                  Regenerate
+                                </button>
+                                <button
+                                  onClick={handleCopyPlan}
+                                  className={`inline-flex items-center gap-2 px-3 py-1.5 border text-[0.6875rem] font-semibold uppercase tracking-[0.1em] transition-colors ${copySuccess
+                                    ? 'border-green-500/50 text-green-400'
+                                    : 'border-edge text-dim hover:text-chalk hover:border-chalk'
+                                    }`}
+                                >
+                                  {copySuccess ? <CheckCircle2 className="w-3 h-3" /> : null}
+                                  {copySuccess ? 'Copied' : 'Copy'}
+                                </button>
                               </div>
-                              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">Ready to start?</h3>
-                              <p className="text-gray-500 max-w-sm leading-relaxed font-medium">
-                                We'll analyze your recent performance and future goals to generate a perfect training schedule.
-                              </p>
-                            </motion.div>
-                          ) : parsedPlan ? (
-                            <motion.div
-                              key="plan"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                            >
-                              <WorkoutPlan key={suggestions?.length} plan={parsedPlan} onEditDay={handleEditDay} />
-                            </motion.div>
-                          ) : (
-                            <div className="prose max-w-none">
-                              <ReactMarkdown>{suggestions}</ReactMarkdown>
+                            )}
+                          </div>
+
+                          <div className="flex-1">
+                            <AnimatePresence mode="wait">
+                              {!suggestions ? (
+                                <motion.div
+                                  key="empty"
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -20 }}
+                                  className="h-[400px] flex flex-col items-center justify-center text-center px-10"
+                                >
+                                  <h3 className="text-3xl font-bold text-chalk tracking-[-0.02em] mb-4">Ready when you are</h3>
+                                  <p className="text-dim max-w-[44ch] leading-[1.7]">
+                                    Set your goals, connect Strava, and generate a plan tailored to your week.
+                                  </p>
+                                </motion.div>
+                              ) : parsedPlan ? (
+                                <motion.div
+                                  key="plan"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                >
+                                  <WorkoutPlan key={suggestions?.length} plan={parsedPlan} onEditDay={handleEditDay} />
+                                </motion.div>
+                              ) : (
+                                <div className="prose prose-invert max-w-none">
+                                  <ReactMarkdown>{suggestions}</ReactMarkdown>
+                                </div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          {loading && (
+                            <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-50">
+                              <div className="w-12 h-12 border-2 border-accent border-t-transparent rounded-full animate-spin mb-8" />
+                              <p className="text-xl font-bold text-chalk tracking-[-0.02em]">Building your plan</p>
+                              <p className="label-caps mt-3">Analyzing Strava data</p>
                             </div>
                           )}
-                        </AnimatePresence>
-                      </div>
-
-                      {loading && (
-                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-                          <div className="relative">
-                            <div className="w-20 h-20 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                            <div className="absolute inset-0 flex items-center justify-center text-blue-600">
-                              <Zap className="w-8 h-8 animate-pulse" />
-                            </div>
-                          </div>
-                          <p className="mt-8 text-2xl font-black text-gray-900 tracking-tight">Crafting Excellence...</p>
-                          <p className="text-gray-500 font-bold mt-2 uppercase tracking-widest text-[10px]">Processing Strava Data</p>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          } />
-        </Routes>
-      </main>
+                  )}
+                </>
+              } />
+            </Routes>
+          </div>
+        </main>
+
+        {/* Coach sidebar panel */}
+        {isConfigured && (
+          <AskCoach
+            messages={chatMessages}
+            onSendMessage={handleSendMessage}
+            isLoading={chatLoading}
+            isOpen={isCoachOpen}
+            onClose={() => setIsCoachOpen(false)}
+          />
+        )}
+      </div>
 
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
-
-      {isConfigured && (
-        <AskCoach
-          messages={chatMessages}
-          onSendMessage={handleSendMessage}
-          isLoading={chatLoading}
-        />
-      )}
     </div>
   );
 }

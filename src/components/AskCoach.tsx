@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send, X, Bot, User, Loader2 } from 'lucide-react';
+import { Send, X, Loader2 } from 'lucide-react';
 
 export interface ChatMessage {
     role: 'user' | 'assistant';
@@ -11,10 +11,11 @@ interface AskCoachProps {
     messages: ChatMessage[];
     onSendMessage: (content: string) => void;
     isLoading: boolean;
+    isOpen: boolean;
+    onClose: () => void;
 }
 
-export const AskCoach: React.FC<AskCoachProps> = ({ messages, onSendMessage, isLoading }) => {
-    const [isOpen, setIsOpen] = useState(false);
+export const AskCoach: React.FC<AskCoachProps> = ({ messages, onSendMessage, isLoading, isOpen, onClose }) => {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +27,16 @@ export const AskCoach: React.FC<AskCoachProps> = ({ messages, onSendMessage, isL
         if (isOpen) scrollToBottom();
     }, [messages, isOpen]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyDown);
+            return () => document.removeEventListener('keydown', handleKeyDown);
+        }
+    }, [isOpen, onClose]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
@@ -34,112 +45,103 @@ export const AskCoach: React.FC<AskCoachProps> = ({ messages, onSendMessage, isL
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-50">
-            <AnimatePresence>
-                {isOpen && (
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Mobile backdrop */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-[380px] h-[550px] flex flex-col overflow-hidden mb-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+                    />
+
+                    {/* Panel */}
+                    <motion.aside
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'tween', duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                        className="
+                            w-full sm:w-[380px] lg:w-[360px] xl:w-[400px]
+                            border-l border-edge bg-black
+                            flex flex-col shrink-0
+                            fixed inset-y-0 right-0 z-50
+                            lg:relative lg:z-auto
+                        "
                     >
                         {/* Header */}
-                        <div className="bg-blue-600 p-4 flex items-center justify-between text-white">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                    <Bot className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold">Ask Coach</h3>
-                                    <p className="text-[10px] text-blue-100 uppercase tracking-widest font-bold">GoTrain Expert AI</p>
-                                </div>
+                        <div className="px-5 py-3.5 flex items-center justify-between border-b border-edge shrink-0">
+                            <div>
+                                <h3 className="font-semibold text-chalk text-[0.9375rem]">Coach</h3>
+                                <p className="label-caps mt-0.5">AI Training Assistant</p>
                             </div>
                             <button
-                                onClick={() => setIsOpen(false)}
-                                className="hover:bg-white/10 p-1.5 rounded-lg transition-colors"
+                                onClick={onClose}
+                                className="text-muted hover:text-chalk p-1 transition-colors lg:hidden"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
                             {messages.length === 0 && (
-                                <div className="text-center py-10 px-6">
-                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <MessageSquare className="w-8 h-8 text-blue-200" />
-                                    </div>
-                                    <h4 className="text-sm font-bold text-gray-900 mb-1">Hello! I'm your GoTrain Coach.</h4>
-                                    <p className="text-xs text-gray-500">Ask me anything about your plan, or ask me to make edits!</p>
+                                <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                                    <h4 className="text-[0.9375rem] font-semibold text-chalk mb-2">Your AI Coach</h4>
+                                    <p className="text-[0.8125rem] text-muted leading-[1.65] max-w-[28ch]">
+                                        Ask about your plan, request changes, or get training advice.
+                                    </p>
                                 </div>
                             )}
 
                             {messages.map((msg, i) => (
                                 <motion.div
                                     key={i}
-                                    initial={{ opacity: 0, x: msg.role === 'user' ? 10 : -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
+                                    initial={{ opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
                                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`flex gap-2 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-600'
-                                            }`}>
-                                            {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                                        </div>
-                                        <div className={`p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                                                ? 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-100'
-                                                : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none shadow-sm'
-                                            }`}>
-                                            {msg.content}
-                                        </div>
+                                    <div className={`max-w-[85%] px-4 py-2.5 text-[0.875rem] leading-[1.6] ${msg.role === 'user'
+                                        ? 'bg-accent text-black'
+                                        : 'bg-surface border border-edge text-chalk'
+                                        }`}>
+                                        {msg.content}
                                     </div>
                                 </motion.div>
                             ))}
                             {isLoading && (
                                 <div className="flex justify-start">
-                                    <div className="flex gap-2 max-w-[85%]">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        </div>
-                                        <div className="bg-white text-gray-400 p-3 rounded-2xl rounded-tl-none border border-gray-100">
-                                            Thinking...
-                                        </div>
+                                    <div className="bg-surface border border-edge px-4 py-2.5 text-dim text-[0.875rem] flex items-center gap-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Thinking...
                                     </div>
                                 </div>
                             )}
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
-                        <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-100 flex gap-2">
+                        {/* Input */}
+                        <form onSubmit={handleSubmit} className="p-3 border-t border-edge flex gap-2 shrink-0">
                             <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Ask your coach..."
-                                className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                className="flex-1 bg-surface border border-edge px-4 py-2.5 text-[0.875rem] text-chalk placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
                             />
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading}
-                                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-2.5 rounded-xl transition-all shadow-lg shadow-blue-100"
+                                className="bg-accent hover:bg-accent-hover disabled:opacity-30 text-black p-2.5 transition-colors"
                             >
                                 <Send className="w-4 h-4" />
                             </button>
                         </form>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-14 h-14 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200 flex items-center justify-center text-white relative group"
-            >
-                <MessageSquare className={`w-7 h-7 transition-all ${isOpen ? 'rotate-90 scale-0 opacity-0' : ''}`} />
-                <X className={`w-7 h-7 absolute transition-all ${!isOpen ? '-rotate-90 scale-0 opacity-0' : ''}`} />
-            </motion.button>
-        </div>
+                    </motion.aside>
+                </>
+            )}
+        </AnimatePresence>
     );
 };
