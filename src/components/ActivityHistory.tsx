@@ -33,7 +33,7 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({
 
     if (activities.length === 0) {
         return (
-            <div className="border border-edge p-12 text-center">
+            <div className="border border-edge bg-surface p-12 text-center">
                 <h3 className="text-lg font-bold text-chalk tracking-[-0.02em] mb-3">No activities yet</h3>
                 <p className="text-muted">
                     Connect Strava to see your workout history.

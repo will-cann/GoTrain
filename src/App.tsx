@@ -293,9 +293,9 @@ function Dashboard() {
   };
 
   return (
-    <div className="h-screen bg-black flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Nav */}
-      <nav className="border-b border-edge z-40 bg-black shrink-0">
+      <nav className="border-b border-edge z-40 bg-[#0a0a0a]/90 backdrop-blur-sm shrink-0">
         <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-10">
             <Link to="/" className="flex items-center gap-2.5 group">
@@ -408,7 +408,7 @@ function Dashboard() {
                       <div className="lg:col-span-1 space-y-6">
                         <GoalForm onSave={handleSaveGoals} savedGoals={userGoals} />
 
-                        <div className="border border-edge p-6">
+                        <div className="border border-edge bg-surface p-6">
                           <h2 className="label-caps mb-6">Data Sources</h2>
                           {!stravaToken ? (
                             <button
@@ -460,7 +460,7 @@ function Dashboard() {
 
                       {/* Right Column: Weekly Plan */}
                       <div className="lg:col-span-2">
-                        <div className="border border-edge p-5 sm:p-8 min-h-[500px] relative overflow-hidden flex flex-col">
+                        <div className="border border-edge bg-surface p-5 sm:p-8 min-h-[500px] relative overflow-hidden flex flex-col">
                           <div className="flex items-center justify-between mb-8">
                             <div>
                               <span className="label-caps block mb-2">Your Program</span>

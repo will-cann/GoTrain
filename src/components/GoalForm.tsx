@@ -52,7 +52,7 @@ export function GoalForm({ onSave, savedGoals }: GoalFormProps) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="border border-edge p-6"
+            className="border border-edge bg-surface p-6"
         >
             <div className="mb-8">
                 <span className="label-caps block mb-2">Training</span>
