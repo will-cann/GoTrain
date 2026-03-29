@@ -24,7 +24,7 @@ import { ActivityHistory } from './components/ActivityHistory';
 import { AskCoach, type ChatMessage } from './components/AskCoach';
 import { fetchHevyWorkouts, calculateExerciseStats, type ExerciseStats } from './services/hevy';
 import { motion, AnimatePresence } from 'framer-motion';
-import logo from './assets/images/gotrain.png';
+import { SubwayLogo, SubwayHero } from './components/SubwayLogo';
 
 function Dashboard() {
   const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit } = useSettings();
@@ -298,10 +298,10 @@ function Dashboard() {
       <nav className="border-b border-edge z-40 bg-black shrink-0">
         <div className="px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-10">
-            <Link to="/" className="flex items-center gap-3 group">
-              <img src={logo} alt="GoTrain" className="w-7 h-7 object-contain" />
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <SubwayLogo size={24} />
               <span className="text-lg font-bold tracking-[-0.02em] text-chalk group-hover:text-accent transition-colors">
-                GOTRAIN
+                Train
               </span>
             </Link>
 
@@ -387,10 +387,10 @@ function Dashboard() {
                 <>
                   {!isConfigured ? (
                     <div className="flex flex-col items-center justify-center py-32 text-center">
-                      <span className="label-caps text-muted mb-6">Welcome to</span>
-                      <h1 className="text-[clamp(3.5rem,8vw+1rem,7rem)] font-bold tracking-[-0.04em] text-chalk mb-6">
-                        GOTRAIN
-                      </h1>
+                      <span className="label-caps text-muted mb-8">Welcome to</span>
+                      <div className="mb-8">
+                        <SubwayHero />
+                      </div>
                       <p className="text-dim max-w-[42ch] text-lg mb-12 leading-[1.7]">
                         AI-driven training plans built from your real data. Connect Strava, set your goals, get moving.
                       </p>
