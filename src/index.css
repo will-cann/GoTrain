@@ -31,47 +31,16 @@
     position: relative;
   }
 
-  /* Dark subway tile background — NYC underground feel.
-     Tiles are lighter than the grout to create visible relief. */
+  /* Subway station background image with dark overlay */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-color: #060606;
-    background-image:
-      /* Tile faces — visibly lighter than grout */
-      repeating-linear-gradient(
-        to bottom,
-        #151515 2px,
-        #151515 46px,
-        #060606 46px,
-        #060606 48px
-      ),
-      repeating-linear-gradient(
-        to right,
-        #151515 2px,
-        #151515 46px,
-        #060606 46px,
-        #060606 48px
-      ),
-      /* Top/left bevel highlight on each tile */
-      repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.06) 2px,
-        rgba(255,255,255,0.06) 3px,
-        transparent 3px,
-        transparent 48px
-      ),
-      repeating-linear-gradient(
-        to right,
-        rgba(255,255,255,0.06) 2px,
-        rgba(255,255,255,0.06) 3px,
-        transparent 3px,
-        transparent 48px
-      );
-    background-size: 48px 48px;
+    background:
+      linear-gradient(rgba(10,10,10,0.82), rgba(10,10,10,0.82)),
+      url('/subway-bg.webp') center center / cover no-repeat;
   }
 
   /* Noise grain on top of tiles for ceramic texture */

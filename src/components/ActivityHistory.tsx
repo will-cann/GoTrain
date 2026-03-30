@@ -44,7 +44,7 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between bg-surface border border-edge rounded p-4">
                 <div>
                     <span className="label-caps block mb-2">Strava</span>
                     <h2 className="text-2xl font-bold text-chalk tracking-[-0.02em]">Recent Activity</h2>
@@ -62,14 +62,14 @@ export const ActivityHistory: React.FC<ActivityHistoryProps> = ({
                 </div>
             </div>
 
-            <div className="border-t border-edge">
+            <div className="border border-edge bg-surface rounded overflow-hidden">
                 {activities.map((activity, index) => (
                     <motion.div
                         key={activity.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
-                        className="border-b border-edge py-5 px-2 group hover:bg-surface transition-colors"
+                        className="border-b border-edge py-5 px-4 group bg-surface hover:bg-surface-raised transition-colors"
                     >
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="font-semibold text-chalk text-[0.9375rem]">
