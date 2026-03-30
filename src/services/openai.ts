@@ -3,17 +3,16 @@ import type { StravaActivity } from './strava';
 import type { WeeklyPlan } from '../components/WorkoutPlan';
 import type { ExerciseStats } from './hevy';
 
-export const generateWorkoutSuggestions = async (
-  apiKey: string,
+function buildGeneratePrompt(
   goals: UserGoals,
   activities: StravaActivity[],
   units: { distance: string; weight: string },
   exerciseStats?: ExerciseStats[],
   currentDate?: string
-) => {
-  const prompt = `
+) {
+  return `
     Current Date: ${currentDate || new Date().toISOString().split('T')[0]}
-    
+
     User Goals:
     - Main Goal: ${goals.mainGoal}
     - Availability: ${goals.daysPerWeek} days/week
@@ -24,16 +23,16 @@ ${goals.considerations ? `    - Special Considerations/Injuries: ${goals.conside
 
     Recent Workouts (Last 7 days):
     ${activities.length > 0 ? activities.map(a => `- ${a.name}: ${a.type}, ${Math.round(a.distance / 1000)}km, ${Math.round(a.moving_time / 60)} mins`).join('\n') : 'No recent activities found.'}
-    
+
     ${exerciseStats && exerciseStats.length > 0 ? `
     Recent Weightlifting Stats (Hevy):
     ${exerciseStats.map(stat => `- ${stat.exerciseName}: 1RM Est: ${Math.round(stat.oneRepMax)}kg, Max Vol: ${Math.round(stat.maxVolume)}kg`).join('\n')}
-    
+
     IMPORTANT: Use these 1RM estimates to prescribe accurate weights (e.g. 70% of 1RM).
     ` : ''}
 
     As a professional fitness coach, generate a highly structured weekly workout plan in JSON format.
-    
+
     The JSON should follow this structure:
     {
       "weeklySummary": "Short overview of the week's focus and total volume",
@@ -64,7 +63,7 @@ ${goals.considerations ? `    - Special Considerations/Injuries: ${goals.conside
         }
       ]
     }
-    
+
     CRITICAL INSTRUCTIONS:
     - For any "strength" or "cross-train" workout involving specific moves, you MUST populate the "exercises" array with exact sets, reps, and weights.
     - Do not just write "3 sets of squats" in the details. Put it in the "exercises" list.
@@ -74,55 +73,22 @@ ${goals.considerations ? `    - Special Considerations/Injuries: ${goals.conside
     IMPORTANT: Assign specific dates to each day starting from Today or Tomorrow based on optimal recovery from recent activities.
     IMPORTANT: Use ${units.distance} for all distances and ${units.weight} for all weights (if any) in the plan.
   `;
+}
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a professional fitness coach assistant. You provide personalized, safe, and effective workout suggestions. You always respond in valid JSON format according to the requested schema.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to generate suggestions');
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-};
-
-export const handleCoachChat = async (
-  apiKey: string,
-  messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+function buildCoachSystemPrompt(
   goals: UserGoals,
   activities: StravaActivity[],
   currentPlan: WeeklyPlan | null,
   units: { distance: string; weight: string },
   exerciseStats?: ExerciseStats[],
   currentDate?: string
-) => {
-  const contextPrompt = `
+) {
+  return `
     You are GoTrain AI Coach. Current Date: ${currentDate || new Date().toISOString().split('T')[0]}
     User Goals: ${goals.mainGoal}, ${goals.fitnessLevel}, ${goals.daysPerWeek} days/week, focuses: ${goals.preferredActivities.join(', ')}.
 ${goals.considerations ? `    Considerations: ${goals.considerations}` : ''}
     Units: ${units.distance} for distance, ${units.weight} for weights.
-    
+
     ${exerciseStats && exerciseStats.length > 0 ? `
     Lifting Stats (1RM Estimates):
     ${exerciseStats.map(stat => `${stat.exerciseName}: ${Math.round(stat.oneRepMax)}kg`).join(', ')}
@@ -130,7 +96,7 @@ ${goals.considerations ? `    Considerations: ${goals.considerations}` : ''}
 
     Current Workout Plan:
     ${currentPlan ? JSON.stringify(currentPlan) : 'No plan yet.'}
-    
+
     Recent Activities:
     ${activities.map(a => `${a.name} (${Math.round(a.distance / 1000)}km)`).join(', ')}
 
@@ -160,6 +126,29 @@ ${goals.considerations ? `    Considerations: ${goals.considerations}` : ''}
          }
     3. Keep responses concise and professional.
     `;
+}
+
+export const generateWorkoutSuggestions = async (
+  apiKey: string,
+  goals: UserGoals,
+  activities: StravaActivity[],
+  units: { distance: string; weight: string },
+  exerciseStats?: ExerciseStats[],
+  currentDate?: string,
+  useProxy: boolean = false
+) => {
+  const prompt = buildGeneratePrompt(goals, activities, units, exerciseStats, currentDate);
+
+  if (useProxy) {
+    const res = await fetch('/api/openai-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to generate suggestions');
+    return data.content;
+  }
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -170,7 +159,60 @@ ${goals.considerations ? `    Considerations: ${goals.considerations}` : ''}
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: contextPrompt },
+        {
+          role: 'system',
+          content: 'You are a professional fitness coach assistant. You provide personalized, safe, and effective workout suggestions. You always respond in valid JSON format according to the requested schema.'
+        },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to generate suggestions');
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+};
+
+export const handleCoachChat = async (
+  apiKey: string,
+  messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+  goals: UserGoals,
+  activities: StravaActivity[],
+  currentPlan: WeeklyPlan | null,
+  units: { distance: string; weight: string },
+  exerciseStats?: ExerciseStats[],
+  currentDate?: string,
+  useProxy: boolean = false
+) => {
+  const systemPrompt = buildCoachSystemPrompt(goals, activities, currentPlan, units, exerciseStats, currentDate);
+
+  if (useProxy) {
+    const res = await fetch('/api/openai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt, messages }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to get coach response');
+    return data.content;
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
         ...messages
       ],
       temperature: 0.7,

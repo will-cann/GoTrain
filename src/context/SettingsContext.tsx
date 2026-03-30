@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+interface ServerConfig {
+    stravaConfigured: boolean;
+    openaiConfigured: boolean;
+    hevyConfigured: boolean;
+}
+
 interface Settings {
     stravaClientId: string;
     stravaClientSecret: string;
@@ -8,10 +14,12 @@ interface Settings {
     distanceUnit: 'kilometers' | 'miles';
     weightUnit: 'kg' | 'lbs';
     isConfigured: boolean;
+    useProxy: boolean;
+    serverConfig: ServerConfig | null;
 }
 
 interface SettingsContextType extends Settings {
-    updateSettings: (settings: Partial<Omit<Settings, 'isConfigured'>>) => void;
+    updateSettings: (settings: Partial<Omit<Settings, 'isConfigured' | 'useProxy' | 'serverConfig'>>) => void;
     clearSettings: () => void;
 }
 
@@ -20,25 +28,50 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const [settings, setSettingsState] = useState<Settings>(() => {
         const saved = localStorage.getItem('workoutBinderSettings');
-        return saved ? JSON.parse(saved) : {
-            stravaClientId: '',
-            stravaClientSecret: '',
-            openAiApiKey: '',
-            hevyApiKey: '',
-            distanceUnit: 'kilometers',
-            weightUnit: 'kg',
-            isConfigured: false
+        const parsed = saved ? JSON.parse(saved) : {};
+        return {
+            stravaClientId: parsed.stravaClientId || '',
+            stravaClientSecret: parsed.stravaClientSecret || '',
+            openAiApiKey: parsed.openAiApiKey || '',
+            hevyApiKey: parsed.hevyApiKey || '',
+            distanceUnit: parsed.distanceUnit || 'kilometers',
+            weightUnit: parsed.weightUnit || 'kg',
+            isConfigured: parsed.isConfigured || false,
+            useProxy: false,
+            serverConfig: null,
         };
     });
 
+    // Check if server-side API keys are configured
     useEffect(() => {
-        localStorage.setItem('workoutBinderSettings', JSON.stringify(settings));
+        fetch('/api/config')
+            .then(res => res.json())
+            .then((config: ServerConfig) => {
+                const serverReady = config.stravaConfigured && config.openaiConfigured;
+                setSettingsState(prev => ({
+                    ...prev,
+                    serverConfig: config,
+                    useProxy: serverReady,
+                    isConfigured: serverReady || Boolean(
+                        prev.stravaClientId && prev.stravaClientSecret && prev.openAiApiKey
+                    ),
+                }));
+            })
+            .catch(() => {
+                // Server config not available (local dev without Netlify), use client-side keys
+            });
+    }, []);
+
+    useEffect(() => {
+        // Persist only user-editable fields
+        const { serverConfig, useProxy, ...persistable } = settings;
+        localStorage.setItem('workoutBinderSettings', JSON.stringify(persistable));
     }, [settings]);
 
-    const updateSettings = (newSettings: Partial<Omit<Settings, 'isConfigured'>>) => {
+    const updateSettings = (newSettings: Partial<Omit<Settings, 'isConfigured' | 'useProxy' | 'serverConfig'>>) => {
         setSettingsState(prev => {
             const updated = { ...prev, ...newSettings };
-            const isConfigured = Boolean(
+            const isConfigured = updated.useProxy || Boolean(
                 updated.stravaClientId &&
                 updated.stravaClientSecret &&
                 updated.openAiApiKey
@@ -48,15 +81,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
 
     const clearSettings = () => {
-        setSettingsState({
+        setSettingsState(prev => ({
             stravaClientId: '',
             stravaClientSecret: '',
             openAiApiKey: '',
             hevyApiKey: '',
             distanceUnit: 'kilometers',
             weightUnit: 'kg',
-            isConfigured: false
-        });
+            isConfigured: prev.useProxy,
+            useProxy: prev.useProxy,
+            serverConfig: prev.serverConfig,
+        }));
     };
 
     return (

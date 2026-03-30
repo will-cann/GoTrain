@@ -27,7 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SubwayLogo, SubwayHero } from './components/SubwayLogo';
 
 function Dashboard() {
-  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit } = useSettings();
+  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, useProxy } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [userGoals, setUserGoals] = useState<UserGoals | undefined>(() => {
@@ -83,7 +83,7 @@ function Dashboard() {
       const handleOAuth = async () => {
         setLoading(true);
         try {
-          const data = await exchangeToken(stravaClientId, stravaClientSecret, code);
+          const data = await exchangeToken(stravaClientId, stravaClientSecret, code, useProxy);
           saveStravaTokens(data);
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (err: any) {
@@ -116,7 +116,7 @@ function Dashboard() {
     }
 
     try {
-      const data = await refreshToken(stravaClientId, stravaClientSecret, refresh);
+      const data = await refreshToken(stravaClientId, stravaClientSecret, refresh, useProxy);
       saveStravaTokens(data);
       return data.access_token;
     } catch (err) {
@@ -131,13 +131,14 @@ function Dashboard() {
     localStorage.setItem('workoutBinderUserGoals', JSON.stringify(goals));
   };
 
-  const handleConnectStrava = () => {
+  const handleConnectStrava = async () => {
     if (!isConfigured) {
       setIsSettingsOpen(true);
       return;
     }
     const redirectUri = window.location.origin;
-    window.location.href = getStravaAuthUrl(stravaClientId, redirectUri);
+    const url = await getStravaAuthUrl(stravaClientId, redirectUri, useProxy);
+    window.location.href = url;
   };
 
   const handleGeneratePlan = async () => {
@@ -153,14 +154,14 @@ function Dashboard() {
         return;
       }
 
-      const recentActivities = await getRecentActivities(token);
+      const recentActivities = await getRecentActivities(token, useProxy);
       setActivities(recentActivities);
       localStorage.setItem('workoutBinderActivities', JSON.stringify(recentActivities));
 
       let fetchedStats: ExerciseStats[] = [];
-      if (hevyApiKey) {
+      if (hevyApiKey || useProxy) {
         try {
-          const hevyWorkouts = await fetchHevyWorkouts(hevyApiKey);
+          const hevyWorkouts = await fetchHevyWorkouts(hevyApiKey, 1, 5, useProxy);
           fetchedStats = calculateExerciseStats(hevyWorkouts);
           setExerciseStats(fetchedStats);
         } catch (err) {
@@ -170,7 +171,7 @@ function Dashboard() {
 
       const units = { distance: distanceUnit, weight: weightUnit };
       const currentDate = new Date().toISOString().split('T')[0];
-      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units, fetchedStats, currentDate);
+      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units, fetchedStats, currentDate, useProxy);
       setSuggestions(workoutPlan);
       localStorage.setItem('workoutBinderSuggestions', workoutPlan);
 
@@ -196,7 +197,7 @@ function Dashboard() {
         setError('Please connect to Strava first.');
         return;
       }
-      const latestActivities = await getRecentActivities(token);
+      const latestActivities = await getRecentActivities(token, useProxy);
       setActivities(latestActivities);
       localStorage.setItem('workoutBinderActivities', JSON.stringify(latestActivities));
     } catch (err: any) {
@@ -221,7 +222,7 @@ function Dashboard() {
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!openAiApiKey) return;
+    if (!openAiApiKey && !useProxy) return;
 
     const newUserMessage: ChatMessage = { role: 'user', content };
     const updatedMessages = [...chatMessages, newUserMessage];
@@ -237,7 +238,8 @@ function Dashboard() {
         parsedPlan,
         { distance: distanceUnit, weight: weightUnit },
         exerciseStats,
-        new Date().toISOString().split('T')[0]
+        new Date().toISOString().split('T')[0],
+        useProxy
       );
 
       let finalContent = coachResponse;

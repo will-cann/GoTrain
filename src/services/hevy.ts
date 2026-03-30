@@ -33,7 +33,17 @@ export interface ExerciseStats {
     lastReps: number;
 }
 
-export const fetchHevyWorkouts = async (apiKey: string, page: number = 1, pageSize: number = 5): Promise<HevyWorkout[]> => {
+export const fetchHevyWorkouts = async (apiKey: string, page: number = 1, pageSize: number = 5, useProxy: boolean = false): Promise<HevyWorkout[]> => {
+    if (useProxy) {
+        const res = await fetch(`/api/hevy-workouts?page=${page}&pageSize=${pageSize}`);
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `Hevy API Error: ${res.statusText}`);
+        }
+        const data = await res.json();
+        return data.workouts;
+    }
+
     try {
         const response = await fetch(`https://api.hevyapp.com/v1/workouts?page=${page}&pageSize=${pageSize}`, {
             method: 'GET',
@@ -86,8 +96,7 @@ export const calculateExerciseStats = (workouts: HevyWorkout[]): ExerciseStats[]
                     statsMap[name].maxVolume = volume;
                 }
 
-                // Assuming workouts are ordered by date descending, simplistic "last" check
-                if (set.index === 0) { // Just take the first set as a reference for "last" for now or overwrite
+                if (set.index === 0) {
                     statsMap[name].lastWeight = weight;
                     statsMap[name].lastReps = reps;
                 }

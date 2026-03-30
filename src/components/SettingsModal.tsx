@@ -8,7 +8,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-    const { stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, updateSettings } = useSettings();
+    const { stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, useProxy, updateSettings } = useSettings();
     const [formData, setFormData] = useState({
         stravaClientId,
         stravaClientSecret,
@@ -66,49 +66,57 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div className="space-y-2">
-                        <label className="label-caps block">Strava Client ID</label>
-                        <input
-                            type="text"
-                            value={formData.stravaClientId}
-                            onChange={e => setFormData(prev => ({ ...prev, stravaClientId: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
-                            placeholder="Enter Client ID"
-                        />
-                    </div>
+                    {useProxy ? (
+                        <div className="px-4 py-3 border border-accent/30 bg-accent/5 text-dim text-sm">
+                            API keys are configured server-side. You only need to adjust units below.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-2">
+                                <label className="label-caps block">Strava Client ID</label>
+                                <input
+                                    type="text"
+                                    value={formData.stravaClientId}
+                                    onChange={e => setFormData(prev => ({ ...prev, stravaClientId: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
+                                    placeholder="Enter Client ID"
+                                />
+                            </div>
 
-                    <div className="space-y-2">
-                        <label className="label-caps block">Strava Client Secret</label>
-                        <input
-                            type="password"
-                            value={formData.stravaClientSecret}
-                            onChange={e => setFormData(prev => ({ ...prev, stravaClientSecret: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
-                            placeholder="Enter Client Secret"
-                        />
-                    </div>
+                            <div className="space-y-2">
+                                <label className="label-caps block">Strava Client Secret</label>
+                                <input
+                                    type="password"
+                                    value={formData.stravaClientSecret}
+                                    onChange={e => setFormData(prev => ({ ...prev, stravaClientSecret: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
+                                    placeholder="Enter Client Secret"
+                                />
+                            </div>
 
-                    <div className="space-y-2">
-                        <label className="label-caps block">OpenAI API Key</label>
-                        <input
-                            type="password"
-                            value={formData.openAiApiKey}
-                            onChange={e => setFormData(prev => ({ ...prev, openAiApiKey: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
-                            placeholder="sk-..."
-                        />
-                    </div>
+                            <div className="space-y-2">
+                                <label className="label-caps block">OpenAI API Key</label>
+                                <input
+                                    type="password"
+                                    value={formData.openAiApiKey}
+                                    onChange={e => setFormData(prev => ({ ...prev, openAiApiKey: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
+                                    placeholder="sk-..."
+                                />
+                            </div>
 
-                    <div className="space-y-2">
-                        <label className="label-caps block">Hevy API Key <span className="text-muted">(Optional)</span></label>
-                        <input
-                            type="password"
-                            value={formData.hevyApiKey}
-                            onChange={e => setFormData(prev => ({ ...prev, hevyApiKey: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
-                            placeholder="Enter Hevy API Key"
-                        />
-                    </div>
+                            <div className="space-y-2">
+                                <label className="label-caps block">Hevy API Key <span className="text-muted">(Optional)</span></label>
+                                <input
+                                    type="password"
+                                    value={formData.hevyApiKey}
+                                    onChange={e => setFormData(prev => ({ ...prev, hevyApiKey: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-surface border border-edge text-chalk text-[0.9375rem] placeholder:text-muted focus:border-accent focus:outline-none transition-colors"
+                                    placeholder="Enter Hevy API Key"
+                                />
+                            </div>
+                        </>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="space-y-2">
