@@ -118,7 +118,7 @@ function Dashboard() {
       };
       handleOAuth();
     }
-  }, [isConfigured, stravaClientId, stravaClientSecret]);
+  }, [isConfigured, stravaClientId, stravaClientSecret, useProxy]);
 
   const saveStravaTokens = (data: any) => {
     localStorage.setItem('strava_access_token', data.access_token);
