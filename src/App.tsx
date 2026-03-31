@@ -103,7 +103,7 @@ function Dashboard() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 
-    if (code && isConfigured) {
+    if (code && isConfigured && (useProxy || (stravaClientId && stravaClientSecret))) {
       const handleOAuth = async () => {
         setLoading(true);
         try {
