@@ -71,9 +71,33 @@ function Dashboard() {
   });
   const [exerciseStats, setExerciseStats] = useState<ExerciseStats[]>([]);
 
+  const isDemoMode = useProxy && !stravaToken;
+
   useEffect(() => {
     localStorage.setItem('workoutBinderChatMessages', JSON.stringify(chatMessages));
   }, [chatMessages]);
+
+  // Auto-load demo Strava data in proxy mode
+  useEffect(() => {
+    if (isDemoMode && activities.length === 0) {
+      fetchDemoActivities();
+    }
+  }, [isDemoMode]);
+
+  const fetchDemoActivities = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/demo-activities');
+      if (!res.ok) throw new Error('Failed to load activities');
+      const data: StravaActivity[] = await res.json();
+      setActivities(data);
+      localStorage.setItem('workoutBinderActivities', JSON.stringify(data));
+    } catch (err) {
+      console.error('Failed to fetch demo activities', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -142,21 +166,34 @@ function Dashboard() {
   };
 
   const handleGeneratePlan = async () => {
-    if (!userGoals || !openAiApiKey) return;
+    if (!userGoals || (!openAiApiKey && !useProxy)) return;
 
     setLoading(true);
     setError(null);
     try {
-      const token = await getValidToken();
-      if (!token) {
-        setError('Please connect to Strava first.');
+      let recentActivities = activities;
+
+      if (stravaToken) {
+        const token = await getValidToken();
+        if (token) {
+          recentActivities = await getRecentActivities(token, useProxy);
+        }
+      } else if (isDemoMode) {
+        // Fetch fresh demo activities
+        const res = await fetch('/api/demo-activities');
+        if (res.ok) {
+          recentActivities = await res.json();
+        }
+      }
+
+      setActivities(recentActivities);
+      localStorage.setItem('workoutBinderActivities', JSON.stringify(recentActivities));
+
+      if (recentActivities.length === 0) {
+        setError('No activity data available.');
         setLoading(false);
         return;
       }
-
-      const recentActivities = await getRecentActivities(token, useProxy);
-      setActivities(recentActivities);
-      localStorage.setItem('workoutBinderActivities', JSON.stringify(recentActivities));
 
       let fetchedStats: ExerciseStats[] = [];
       if (hevyApiKey || useProxy) {
@@ -192,12 +229,24 @@ function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getValidToken();
-      if (!token) {
+      let latestActivities: StravaActivity[];
+
+      if (stravaToken) {
+        const token = await getValidToken();
+        if (!token) {
+          setError('Please connect to Strava first.');
+          return;
+        }
+        latestActivities = await getRecentActivities(token, useProxy);
+      } else if (isDemoMode) {
+        const res = await fetch('/api/demo-activities');
+        if (!res.ok) throw new Error('Failed to refresh activities');
+        latestActivities = await res.json();
+      } else {
         setError('Please connect to Strava first.');
         return;
       }
-      const latestActivities = await getRecentActivities(token, useProxy);
+
       setActivities(latestActivities);
       localStorage.setItem('workoutBinderActivities', JSON.stringify(latestActivities));
     } catch (err: any) {
@@ -412,7 +461,33 @@ function Dashboard() {
 
                         <div className="border border-edge bg-surface p-6">
                           <h2 className="label-caps mb-6">Data Sources</h2>
-                          {!stravaToken ? (
+                          {isDemoMode ? (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between py-3 border-b border-edge">
+                                <div className="flex items-center gap-3 text-[#FC4C02]">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span className="label-caps text-[#FC4C02]">Strava</span>
+                                </div>
+                                <button
+                                  onClick={fetchDemoActivities}
+                                  disabled={loading}
+                                  className="label-caps text-muted hover:text-chalk transition-colors flex items-center gap-1.5"
+                                >
+                                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                                  Sync
+                                </button>
+                              </div>
+                              {activities.length > 0 && (
+                                <Link to="/history" className="block py-3 border-b border-edge hover:border-chalk transition-colors group">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="label-caps">Last 7 Days</span>
+                                    <ArrowRight className="w-3 h-3 text-muted group-hover:text-chalk group-hover:translate-x-0.5 transition-all" />
+                                  </div>
+                                  <div className="text-2xl font-bold text-chalk tracking-[-0.02em] tabular">{activities.length} <span className="text-dim text-base font-normal">workouts</span></div>
+                                </Link>
+                              )}
+                            </div>
+                          ) : !stravaToken ? (
                             <button
                               onClick={handleConnectStrava}
                               disabled={loading}
@@ -448,7 +523,7 @@ function Dashboard() {
                           )}
                         </div>
 
-                        {stravaToken && userGoals && (
+                        {(stravaToken || isDemoMode) && userGoals && (
                           <button
                             onClick={handleGeneratePlan}
                             disabled={loading}
