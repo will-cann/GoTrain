@@ -34,7 +34,10 @@ export default async (req: Request, context: Context) => {
   });
 
   const data = await response.json();
-  return Response.json(data, { status: response.status });
+  if (!response.ok) {
+    return Response.json({ error: data.message || "Token exchange failed", details: data }, { status: response.status });
+  }
+  return Response.json(data);
 };
 
 export const config = { path: "/api/strava-token" };
