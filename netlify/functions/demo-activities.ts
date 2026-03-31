@@ -20,22 +20,24 @@ export default async () => {
   });
 
   if (!tokenRes.ok) {
-    return Response.json({ error: "Failed to refresh Strava token" }, { status: 502 });
+    const tokenErr = await tokenRes.text();
+    return Response.json({ error: "Failed to refresh Strava token", details: tokenErr }, { status: 502 });
   }
 
   const tokenData = await tokenRes.json();
 
-  // Fetch last 7 days of activities
+  // Fetch last 30 days of activities
   const now = Math.floor(Date.now() / 1000);
-  const oneWeekAgo = now - 7 * 24 * 60 * 60;
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60;
 
   const activitiesRes = await fetch(
-    `https://www.strava.com/api/v3/athlete/activities?after=${oneWeekAgo}`,
+    `https://www.strava.com/api/v3/athlete/activities?after=${thirtyDaysAgo}&per_page=30`,
     { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
   );
 
   if (!activitiesRes.ok) {
-    return Response.json({ error: "Failed to fetch activities" }, { status: 502 });
+    const actErr = await activitiesRes.text();
+    return Response.json({ error: "Failed to fetch activities", status: activitiesRes.status, details: actErr }, { status: 502 });
   }
 
   const activities = await activitiesRes.json();
