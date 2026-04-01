@@ -10,8 +10,10 @@
   --color-muted: #555555;
   --color-dim: #8a8a8a;
   --color-chalk: #e8e6e3;
-  --color-accent: #FF4800;
-  --color-accent-hover: #FF5A1A;
+  --color-accent: #ff751f;
+  --color-accent-hover: #ff8a3d;
+  --color-green: #00bf63;
+  --color-green-hover: #00d96f;
 }
 
 @layer base {

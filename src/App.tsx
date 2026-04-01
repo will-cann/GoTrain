@@ -16,7 +16,7 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { SettingsModal } from './components/SettingsModal';
 import { GoalForm } from './components/GoalForm';
 import type { UserGoals } from './components/GoalForm';
-import { getStravaAuthUrl, exchangeToken, refreshToken, getRecentActivities } from './services/strava';
+import { getStravaAuthUrl, exchangeToken, refreshToken, getRecentActivities, revokeToken } from './services/strava';
 import type { StravaActivity } from './services/strava';
 import { generateWorkoutSuggestions, handleCoachChat } from './services/openai';
 import { WorkoutPlan, type WeeklyPlan } from './components/WorkoutPlan';
@@ -25,9 +25,13 @@ import { AskCoach, type ChatMessage } from './components/AskCoach';
 import { fetchHevyWorkouts, calculateExerciseStats, type ExerciseStats } from './services/hevy';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SubwayLogo, SubwayHero } from './components/SubwayLogo';
+import { Footer } from './components/Footer';
+import { StravaAttribution } from './components/StravaAttribution';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
 
 function Dashboard() {
-  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, useProxy } = useSettings();
+  const { isConfigured, stravaClientId, stravaClientSecret, openAiApiKey, hevyApiKey, distanceUnit, weightUnit, useProxy, hasOpenAiKey, useOpenAiProxy, freeGenerationsRemaining, consumeFreeGeneration } = useSettings();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [userGoals, setUserGoals] = useState<UserGoals | undefined>(() => {
@@ -166,7 +170,7 @@ function Dashboard() {
   };
 
   const handleGeneratePlan = async () => {
-    if (!userGoals || (!openAiApiKey && !useProxy)) return;
+    if (!userGoals || !hasOpenAiKey) return;
 
     setLoading(true);
     setError(null);
@@ -208,9 +212,14 @@ function Dashboard() {
 
       const units = { distance: distanceUnit, weight: weightUnit };
       const currentDate = new Date().toISOString().split('T')[0];
-      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units, fetchedStats, currentDate, useProxy);
+      const workoutPlan = await generateWorkoutSuggestions(openAiApiKey, userGoals, recentActivities, units, fetchedStats, currentDate, useOpenAiProxy);
       setSuggestions(workoutPlan);
       localStorage.setItem('workoutBinderSuggestions', workoutPlan);
+
+      // Consume a free generation if using server proxy (not BYOK)
+      if (useOpenAiProxy && !openAiApiKey) {
+        consumeFreeGeneration();
+      }
 
       try {
         const parsed = JSON.parse(workoutPlan);
@@ -257,6 +266,12 @@ function Dashboard() {
   };
 
   const handleDisconnectStrava = () => {
+    // Revoke token with Strava (fire-and-forget)
+    const token = localStorage.getItem('strava_access_token');
+    if (token) {
+      revokeToken(token, useProxy);
+    }
+
     localStorage.removeItem('strava_access_token');
     localStorage.removeItem('strava_refresh_token');
     localStorage.removeItem('strava_expires_at');
@@ -271,7 +286,7 @@ function Dashboard() {
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!openAiApiKey && !useProxy) return;
+    if (!hasOpenAiKey) return;
 
     const newUserMessage: ChatMessage = { role: 'user', content };
     const updatedMessages = [...chatMessages, newUserMessage];
@@ -288,8 +303,13 @@ function Dashboard() {
         { distance: distanceUnit, weight: weightUnit },
         exerciseStats,
         new Date().toISOString().split('T')[0],
-        useProxy
+        useOpenAiProxy
       );
+
+      // Consume a free generation if using server proxy (not BYOK)
+      if (useOpenAiProxy && !openAiApiKey) {
+        consumeFreeGeneration();
+      }
 
       let finalContent = coachResponse;
 
@@ -464,9 +484,9 @@ function Dashboard() {
                           {isDemoMode ? (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between py-3 border-b border-edge">
-                                <div className="flex items-center gap-3 text-[#FC4C02]">
+                                <div className="flex items-center gap-3 text-green">
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span className="label-caps text-[#FC4C02]">Strava</span>
+                                  <span className="label-caps text-green">Strava</span>
                                 </div>
                                 <button
                                   onClick={fetchDemoActivities}
@@ -499,9 +519,9 @@ function Dashboard() {
                           ) : (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between py-3 border-b border-edge">
-                                <div className="flex items-center gap-3 text-[#FC4C02]">
+                                <div className="flex items-center gap-3 text-green">
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span className="label-caps text-[#FC4C02]">Strava Connected</span>
+                                  <span className="label-caps text-green">Strava Connected</span>
                                 </div>
                                 <button
                                   onClick={handleDisconnectStrava}
@@ -521,17 +541,42 @@ function Dashboard() {
                               )}
                             </div>
                           )}
+                          {(stravaToken || isDemoMode) && (
+                            <div className="pt-4">
+                              <StravaAttribution />
+                            </div>
+                          )}
                         </div>
 
                         {(stravaToken || isDemoMode) && userGoals && (
-                          <button
-                            onClick={handleGeneratePlan}
-                            disabled={loading}
-                            className="w-full bg-accent hover:bg-accent-hover text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-4 px-6 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
-                          >
-                            <Send className={`w-4 h-4 ${loading ? 'animate-pulse' : ''}`} />
-                            {loading ? 'Analyzing...' : 'Generate Plan'}
-                          </button>
+                          hasOpenAiKey ? (
+                            <div className="space-y-2">
+                              <button
+                                onClick={handleGeneratePlan}
+                                disabled={loading}
+                                className="w-full bg-accent hover:bg-accent-hover text-black font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-4 px-6 flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+                              >
+                                <Send className={`w-4 h-4 ${loading ? 'animate-pulse' : ''}`} />
+                                {loading ? 'Analyzing...' : 'Generate Plan'}
+                              </button>
+                              {useOpenAiProxy && !openAiApiKey && (
+                                <p className="text-center text-dim text-xs">
+                                  {freeGenerationsRemaining} free generation{freeGenerationsRemaining !== 1 ? 's' : ''} remaining
+                                  {freeGenerationsRemaining <= 3 && (
+                                    <span> &mdash; <button onClick={() => setIsSettingsOpen(true)} className="text-accent hover:text-accent-hover transition-colors">add your OpenAI key</button> for unlimited</span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setIsSettingsOpen(true)}
+                              className="w-full border border-edge text-dim hover:text-chalk hover:border-chalk font-semibold text-[0.8125rem] uppercase tracking-[0.12em] py-4 px-6 flex items-center justify-center gap-3 transition-all"
+                            >
+                              <SettingsIcon className="w-4 h-4" />
+                              Add OpenAI Key to Generate Plans
+                            </button>
+                          )
                         )}
                       </div>
 
@@ -612,6 +657,7 @@ function Dashboard() {
                 </>
               } />
             </Routes>
+            <Footer />
           </div>
         </main>
 
@@ -639,7 +685,11 @@ function App() {
   return (
     <Router>
       <SettingsProvider>
-        <Dashboard />
+        <Routes>
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="*" element={<Dashboard />} />
+        </Routes>
       </SettingsProvider>
     </Router>
   );
